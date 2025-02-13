@@ -1,3 +1,18 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "datetime",
+#     "email-validator",
+#     "fastapi",
+#     "httpx",
+#     "numpy",
+#     "pip",
+#     "pybase64",
+#     "python-dateutil",
+#     "typing",
+#     "uvicorn",
+# ]
+# ///
 import os
 import sys
 import subprocess
