@@ -268,33 +268,37 @@ async def task_a4(source_file: str, target_file: str, sort_fields: List[str]) ->
 # ---------------------------------------------------------------------------
 # Task A5: Write the first line of the 10 most recent .log files in /data/logs/
 # ---------------------------------------------------------------------------
-def task_a5() -> str:
+async def task_a5(source_dir: str, target_file: str, file_extension: str) -> str:
     """
     Task A5.
     
-    In the directory '/data/logs/', identifies the 10 most recent '.log' files 
-    (based on file modification time), reads the first line from each file, and 
-    writes these lines (most recent first) to '/data/logs-recent.txt'.
+    In the directory specified by `source_file`, identifies the 10 most recent files 
+    with the given `file_extension` (based on file modification time), reads the first line from each file, and 
+    writes these lines (most recent first) to `target_file`.
+    
+    Args:
+        source_file (str): The path to the directory containing log files.
+        target_file (str): The path to the output file where the first lines will be written.
+        file_extension (str): The file extension to filter files (e.g., '.log').
     
     Returns:
         str: A message indicating that the recent log lines have been successfully written.
     
     Raises:
-        FileNotFoundError: If '/data/logs/' does not exist.
-        RuntimeError: For file read/write issues.
+        HTTPException: If the source directory does not exist, no files with the given extension are found, or for file read/write issues.
     """
-    logs_dir = "/data/logs/"
-    output_file = "/data/logs-recent.txt"
-    
-    if not os.path.isdir(logs_dir):
-        raise FileNotFoundError(f"Directory {logs_dir} not found.")
+    print(f"Checking if directory {source_dir} exists")
+    if not os.path.isdir(source_dir):
+        raise HTTPException(status_code=404, detail=f"Directory {source_dir} not found.")
     
     try:
-        # Gather all .log files from the directory.
-        log_files = [os.path.join(logs_dir, f) for f in os.listdir(logs_dir) if f.endswith(".log")]
+        print(f"Gathering all files with extension '{file_extension}' from {source_dir}")
+        # Gather all files with the given extension from the directory.
+        log_files = [os.path.join(source_dir, f) for f in os.listdir(source_dir) if f.endswith(file_extension)]
         if not log_files:
-            raise RuntimeError("No .log files found in the directory.")
+            raise HTTPException(status_code=404, detail=f"No files with extension '{file_extension}' found in the directory.")
         
+        print(f"Sorting files by last modification time")
         # Sort the files by last modification time (most recent first).
         log_files.sort(key=lambda f: os.path.getmtime(f), reverse=True)
         selected_logs = log_files[:10]
@@ -302,20 +306,29 @@ def task_a5() -> str:
         lines = []
         for log_file in selected_logs:
             try:
+                print(f"Reading first line from {log_file}")
                 with open(log_file, "r") as f:
                     first_line = f.readline().strip()
                     lines.append(first_line)
             except Exception:
                 lines.append(f"Error reading {os.path.basename(log_file)}")
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise RuntimeError("Error processing log files.") from e
+        raise HTTPException(status_code=500, detail="Error processing log files.") from e
     
     try:
-        with open(output_file, "w") as f:
+        print(f"Writing first lines to {target_file}")
+        with open(target_file, "w") as f:
             for line in lines:
                 f.write(line + "\n")
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        raise RuntimeError("Error writing recent logs to file.") from e
+        raise HTTPException(status_code=500, detail="Error writing recent logs to file.") from e
+    
+    print(f"First lines of the 10 most recent files with extension '{file_extension}' written to {target_file}")
+    return f"First lines of the 10 most recent files with extension '{file_extension}' written to {target_file}."
 
 
 # ---------------------------------------------------------------------------
@@ -887,5 +900,6 @@ if __name__ == '__main__':
     # asyncio.run(task_a1(os.getenv("EMAIL"), "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"))
     # asyncio.run(task_a2('./data/format.md'))
     # asyncio.run(task_a3('./data/dates.txt', './data/dates-wednesdays.txt', 'Wednesday'))
-    asyncio.run(task_a4('./data/contacts.json', './data/contacts-sorted.json', ['last_name', 'first_name']))
+    # asyncio.run(task_a4('./data/contacts.json', './data/contacts-sorted.json', ['last_name', 'first_name']))
+    asyncio.run(task_a5('./data/logs/', './data/logs-recent.txt', '.log'))
     pass
