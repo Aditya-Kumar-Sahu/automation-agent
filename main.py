@@ -67,12 +67,13 @@ def convert_date_format(date_str: str) -> str:
 # ---------------------------------------------------------------------------
 # Task A1: Install "uv" (if required) and run the data generator script
 # ---------------------------------------------------------------------------
-async def task_a1(user_email: str) -> str:
+async def task_a1(user_email: str, script_url: str) -> str:
     """
     Asynchronously performs a series of tasks including email verification, package installation, 
     and script execution using the 'uv' package.
     Args:
         user_email (str): The email address of the user to be verified and used in the script execution.
+        script_url (str): The URL of the data generator script to be executed.
     Returns:
         str: A message indicating the successful execution of the data generator script.
     Raises:
@@ -99,9 +100,6 @@ async def task_a1(user_email: str) -> str:
         raise HTTPException(status_code=500, detail="Failed to install 'uv' package.") from e
     print("'uv' package is installed")
 
-    # Download the data generator script from the URL.
-    script_url = "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"
-    
     # Execute the script using 'uv run' with user_email as argument and --root './data'.
     try:
         print("Executing data generator script")
@@ -224,45 +222,47 @@ async def task_a3(source_file: str, target_file: str, day: str) -> str:
 # ---------------------------------------------------------------------------
 # Task A4: Sort contacts by last_name then first_name in /data/contacts.json
 # ---------------------------------------------------------------------------
-def task_a4() -> str:
+async def task_a4(source_file: str, target_file: str, sort_fields: List[str]) -> str:
     """
     Task A4.
     
-    Reads '/data/contacts.json', which should contain a list of contact objects.
-    The contacts are sorted first by 'last_name' and then by 'first_name'.
-    The sorted list is written to '/data/contacts-sorted.json'.
+    Reads the specified source file, which should contain a list of contact objects.
+    The contacts are sorted by the specified fields in the given order.
+    The sorted list is written to the specified target file.
+    
+    Args:
+        source_file (str): The path to the input file containing contacts.
+        target_file (str): The path to the output file where the sorted contacts will be written.
+        sort_fields (List[str]): The list of fields to sort by, in order of priority.
     
     Returns:
         str: A message indicating the sorted file was successfully written.
     
     Raises:
-        FileNotFoundError: If '/data/contacts.json' is missing.
-        RuntimeError: If the JSON structure is unexpected or file operations fail.
+        HTTPException: If the source file is missing, the JSON structure is unexpected, or file operations fail.
     """
-    input_file = "/data/contacts.json"
-    output_file = "/data/contacts-sorted.json"
-    
-    if not os.path.isfile(input_file):
-        raise FileNotFoundError(f"{input_file} not found.")
+    if not os.path.isfile(source_file):
+        raise HTTPException(status_code=404, detail=f"{source_file} not found.")
     
     try:
-        with open(input_file, "r") as f:
+        print(f"Sorting contacts by {sort_fields}")
+        with open(source_file, "r") as f:
             contacts = json.load(f)
         
         if not isinstance(contacts, list):
-            raise RuntimeError("Expected a list of contacts in the JSON file.")
+            raise HTTPException(status_code=400, detail="Expected a list of contacts in the JSON file.")
         
-        sorted_contacts = sorted(contacts, key=lambda x: (x.get("last_name", ""), x.get("first_name", "")))
+        sorted_contacts = sorted(contacts, key=lambda x: tuple(x[f'{field}'] for field in sort_fields))
     except Exception as e:
-        raise RuntimeError("Error processing contacts file.") from e
+        raise HTTPException(status_code=500, detail="Error processing contacts file.") from e
     
     try:
-        with open(output_file, "w") as f:
+        with open(target_file, "w") as f:
             json.dump(sorted_contacts, f, indent=2)
     except Exception as e:
-        raise RuntimeError("Error writing sorted contacts to file.") from e
-    
-    return f"Sorted contacts and wrote to {output_file}."
+        raise HTTPException(status_code=500, detail="Error writing sorted contacts to file.") from e
+    print(f"Sorted contacts by {sort_fields} and wrote to {target_file}.")
+    return f"Sorted contacts by {sort_fields} and wrote to {target_file}."
 
 
 # ---------------------------------------------------------------------------
@@ -884,7 +884,8 @@ async def query_gpt(user_input: str, tools: List[Dict[str, Any]]) -> Dict[str, A
 
 
 if __name__ == '__main__':
-    # asyncio.run(task_a1(EMAIL))
+    # asyncio.run(task_a1(os.getenv("EMAIL"), "https://raw.githubusercontent.com/sanand0/tools-in-data-science-public/tds-2025-01/project-1/datagen.py"))
     # asyncio.run(task_a2('./data/format.md'))
-    asyncio.run(task_a3('./data/dates.txt', './data/dates-wednesdays.txt', 'Wednesday'))
+    # asyncio.run(task_a3('./data/dates.txt', './data/dates-wednesdays.txt', 'Wednesday'))
+    asyncio.run(task_a4('./data/contacts.json', './data/contacts-sorted.json', ['last_name', 'first_name']))
     pass
